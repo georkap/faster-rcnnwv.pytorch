@@ -76,6 +76,13 @@ class _ProposalLayer(nn.Module):
 
         batch_size = bbox_deltas.size(0)
 
+#        # added for gpu choice
+#        try:
+#            device_id = scores.get_device()
+#        except:
+#            device_id = None
+
+
         feat_height, feat_width = scores.size(2), scores.size(3)
         shift_x = np.arange(0, feat_width) * self._feat_stride
         shift_y = np.arange(0, feat_height) * self._feat_stride
@@ -87,6 +94,11 @@ class _ProposalLayer(nn.Module):
         A = self._num_anchors
         K = shifts.size(0)
 
+#        if device_id is not None:
+#            device = torch.device("cuda:{}".format(device_id))
+#            self._anchors = self._anchors.type_as(scores).to(device)
+#            shifts = shifts.to(device)
+#        else:
         self._anchors = self._anchors.type_as(scores)
         # anchors = self._anchors.view(1, A, 4) + shifts.view(1, K, 4).permute(1, 0, 2).contiguous()
         anchors = self._anchors.view(1, A, 4) + shifts.view(K, 1, 4)

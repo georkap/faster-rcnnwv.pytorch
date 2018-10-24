@@ -31,7 +31,7 @@ from model.utils.net_utils import weights_normal_init, save_net, load_net, \
       adjust_learning_rate, save_checkpoint, clip_gradient
 
 from model.faster_rcnn.vgg16 import vgg16
-from model.faster_rcnn.resnet import resnet
+from model.faster_rcnn.resnet_w2v_split import resnet
 
 def parse_args():
   """

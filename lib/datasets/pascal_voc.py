@@ -288,11 +288,15 @@ class pascal_voc(imdb):
                                        dets[k, 2] + 1, dets[k, 3] + 1))
 
     def _do_python_eval(self, output_dir='output'):
+#        annopath = os.path.join(
+#            self._devkit_path,
+#            'VOC' + self._year,
+#            'Annotations',
+#            '{:s}.xml')
         annopath = os.path.join(
-            self._devkit_path,
-            'VOC' + self._year,
-            'Annotations',
-            '{:s}.xml')
+                self._devkit_path,
+                'VOC' + self._year,
+                'Annotations') + '\\{:s}.xml'
         imagesetfile = os.path.join(
             self._devkit_path,
             'VOC' + self._year,
@@ -346,6 +350,17 @@ class pascal_voc(imdb):
                     self._image_set, output_dir)
         print('Running:\n{}'.format(cmd))
         status = subprocess.call(cmd, shell=True)
+
+    def evaluate_detections_no_write(self, all_boxes, output_dir):
+        self._do_python_eval(output_dir)
+        if self.config['matlab_eval']:
+            self._do_matlab_eval(output_dir)
+        if self.config['cleanup']:
+            for cls in self._classes:
+                if cls == '__background__':
+                    continue
+                filename = self._get_voc_results_file_template().format(cls)
+                os.remove(filename)
 
     def evaluate_detections(self, all_boxes, output_dir):
         self._write_voc_results_file(all_boxes)
