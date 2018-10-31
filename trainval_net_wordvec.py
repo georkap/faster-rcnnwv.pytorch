@@ -38,6 +38,13 @@ def parse_args():
   Parse input arguments
   """
   parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
+  
+  parser.add_argument('--wv', type=int, default=50, help='choice of word vector size, only support 50 for now',
+                      choices=[50])
+  parser.add_argument('--ce_loss', default=True, action='store_false', help='whether to have the original cross entropy loss as an output layer')
+  parser.add_argument('--mse_loss', default=False, action='store_true', help='adds an output layer for the mse word vector loss')
+  parser.add_argument('--cosine_loss', default=False, action='store_true', help='adds an output layer for the cosine word vector loss')
+  
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='pascal_voc', type=str)
@@ -237,7 +244,7 @@ if __name__ == '__main__':
   if args.net == 'vgg16':
     fasterRCNN = vgg16(imdb.classes, pretrained=True, class_agnostic=args.class_agnostic)
   elif args.net == 'res101':
-    fasterRCNN = resnet(imdb.classes, 101, pretrained=True, class_agnostic=args.class_agnostic)
+    fasterRCNN = resnet(imdb.classes, 101, pretrained=True, class_agnostic=args.class_agnostic, args.wv)
   elif args.net == 'res50':
     fasterRCNN = resnet(imdb.classes, 50, pretrained=True, class_agnostic=args.class_agnostic)
   elif args.net == 'res152':
@@ -315,13 +322,20 @@ if __name__ == '__main__':
       num_boxes.data.resize_(data[3].size()).copy_(data[3])
 
       fasterRCNN.zero_grad()
-      rois, cls_prob, bbox_pred, \
-      rpn_loss_cls, rpn_loss_box, \
-      RCNN_loss_cls, RCNN_loss_bbox, \
-      rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
-
-      loss = rpn_loss_cls.mean() + rpn_loss_box.mean() \
-           + RCNN_loss_cls.mean() + RCNN_loss_bbox.mean()
+#      rois, cls_prob, bbox_pred, \
+#      rpn_loss_cls, rpn_loss_box, \
+#      RCNN_loss_cls, RCNN_loss_bbox, \
+#      rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+#
+#      loss = rpn_loss_cls.mean() + rpn_loss_box.mean() \
+#           + RCNN_loss_cls.mean() + RCNN_loss_bbox.mean()
+#      loss_temp += loss.item()
+      
+      rois, cls_prob, bbox_pred, losses, rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+      
+      loss = 0
+      for key, val in losses.items():
+          loss += val.mean()
       loss_temp += loss.item()
 
       # backward
@@ -337,10 +351,11 @@ if __name__ == '__main__':
           loss_temp /= (args.disp_interval + 1)
 
         if args.mGPUs:
-          loss_rpn_cls = rpn_loss_cls.mean().item()
-          loss_rpn_box = rpn_loss_box.mean().item()
-          loss_rcnn_cls = RCNN_loss_cls.mean().item()
-          loss_rcnn_box = RCNN_loss_bbox.mean().item()
+          loss_rpn_cls = losses['rpn_loss_cls'].mean().item()#rpn_loss_cls.mean().item()
+          loss_rpn_box = losses['rpn_loss_bbox'].mean().item()#rpn_loss_box.mean().item()
+          loss_rcnn_cls = losses['RCNN_loss_cls'].mean().item() if args.ce_loss else 0#RCNN_loss_cls.mean().item()
+          loss_rcnn_cls_wv = losses['RCNN_loss_cls_wv'].mean().item() if args.mse_loss or args.cosine_loss else 0
+          loss_rcnn_box = losses['RCNN_loss_bbox'].mean().item()#RCNN_loss_bbox.mean().item()
           loss_nonzero = cls_prob.mean().item()
           fg_cnt = torch.sum(rois_label.data.ne(0))
           bg_cnt = rois_label.data.numel() - fg_cnt
@@ -356,8 +371,8 @@ if __name__ == '__main__':
         print("[session %d][epoch %2d][iter %4d/%4d] loss: %.4f, lr: %.2e" \
                                 % (args.session, epoch, step, iters_per_epoch, loss_temp, lr))
         print("\t\t\tfg/bg=(%d/%d), time cost: %f" % (fg_cnt, bg_cnt, end-start))
-        print("\t\t\trpn_cls: %.4f, rpn_box: %.4f, rcnn_cls: %.4f, rcnn_box %.4f" \
-                      % (loss_rpn_cls, loss_rpn_box, loss_rcnn_cls, loss_rcnn_box))
+        print("\t\t\trpn_cls: %.4f, rpn_box: %.4f, rcnn_cls: %.4f, rcnn_cls_wv: %.4f, rcnn_box %.4f" \
+                      % (loss_rpn_cls, loss_rpn_box, loss_rcnn_cls, loss_rcnn_cls_wv, loss_rcnn_box))
         print("Non zero class loss {:.4f}".format(loss_nonzero))
         if args.use_tfboard:
           info = {
@@ -365,6 +380,7 @@ if __name__ == '__main__':
             'loss_rpn_cls': loss_rpn_cls,
             'loss_rpn_box': loss_rpn_box,
             'loss_rcnn_cls': loss_rcnn_cls,
+            'loss_rcnn_cls_wv': loss_rcnn_cls_wv,
             'loss_rcnn_box': loss_rcnn_box
           }
           logger.add_scalars("logs_s_{}/losses".format(args.session), info, (epoch - 1) * iters_per_epoch + step)

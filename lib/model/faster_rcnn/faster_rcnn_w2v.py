@@ -123,42 +123,70 @@ class _fasterRCNN(nn.Module):
 #        tanh_layer = nn.Tanh()
 #        cls_score = tanh_layer(cls_score)
         
-        
         cls_prob = F.softmax(cls_score, 1)
-        mse_loss_fun = nn.MSELoss(reduce=False)
 
         RCNN_loss_cls = 0
         RCNN_loss_bbox = 0
 
-        if self.training:
-            # classification loss
-            #RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)
-            rois_vector = torch.zeros(rois_label.shape[0], 50)
-            for ind, val in enumerate(rois_label):
-                rois_vector[ind] = torch.tensor(name_vectors[val.item()])
-                
-            rois_vector = rois_vector.cuda()
-            #cosine_loss = 1 - F.cosine_similarity(cls_score, rois_vector)
-            mse_loss_notmean = mse_loss_fun(cls_score, rois_vector)
-            mse_loss = torch.mean(mse_loss_notmean, dim=1)
-            smse_loss = scale_invariant_loss(cls_score, rois_vector)
-            scale_loss = mse_loss - smse_loss
-            
-            indexes = np.where(rois_label != 0)
-            nonzero_cls_loss = torch.tensor(np.mean(scale_loss[indexes].detach().cpu().numpy()), dtype=torch.float64, requires_grad=False).cuda()
-            RCNN_loss_cls = torch.mean(scale_loss)
+        losses = {}
 
+        if self.training:
             # bounding box regression L1 loss
             RCNN_loss_bbox = _smooth_l1_loss(bbox_pred, rois_target, rois_inside_ws, rois_outside_ws)
-
+            losses['rpn_loss_cls'] = rpn_loss_cls.unsqueeze(0)
+            losses['rpn_loss_bbox'] = rpn_loss_bbox.unsqueeze(0)
+            losses['RCNN_loss_bbox'] = RCNN_loss_bbox.unsqueeze(0)
+            
+            if self.ce_loss:
+                RCNN_loss_cls = self.original_cls_loss_fun(cls_score, rois_label)
+                losses['RCNN_loss_cls'] = RCNN_loss_cls.unsqueeze(0)
+            
+            if self.mse_loss or self.cosine_loss:
+                # create a vector for the size of the word vector
+                rois_vector = torch.zeros(rois_label.shape[0], self.wvsize) 
+                for ind, val in enumerate(rois_label):
+                    rois_vector[ind] = torch.tensor(name_vectors[val.item()])               
+                rois_vector = rois_vector.cuda()
+            
+                if self.mse_loss:
+                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.mse_loss_fun(cls_score, rois_label, rois_vector)
+                    losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
+                elif self.cosine_loss:
+                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.cosine_loss_fun(cls_score, rois_vector)        
+                    losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
 
         cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
         bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
 
         if self.training:
-            return rois, nonzero_cls_loss.unsqueeze(0), bbox_pred, rpn_loss_cls.unsqueeze_(0), rpn_loss_bbox.unsqueeze_(0), RCNN_loss_cls.unsqueeze_(0), RCNN_loss_bbox.unsqueeze_(0), rois_label
+            return rois, nonzero_cls_loss_wv.unsqueeze(0), bbox_pred, losses, rois_label
+#            return rois, nonzero_cls_loss_wv.unsqueeze(0), bbox_pred, rpn_loss_cls.unsqueeze(0), rpn_loss_bbox.unsqueeze(0), RCNN_loss_cls.unsqueeze(0), RCNN_loss_bbox.unsqueeze(0), rois_label
         else:
             return  rois, cls_score, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox, rois_label
+
+    def original_cls_loss_fun(self, cls_score, rois_label):
+        RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)     
+        return RCNN_loss_cls
+
+    #TODO: change to normalized cosine loss
+    def cosine_loss_fun(self, cls_score, rois_vector):
+        RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector)
+        return torch.tensor(0).cuda(), RCNN_loss_cls_wv # the first argument is for the nonzero_cls_loss_wv that we currently dont have in cosine loss, so that the code wont break
+
+    def mse_loss_fun(self, cls_score, rois_label, rois_vector):     
+        mse_loss_fun = nn.MSELoss(reduce=False)
+        
+        mse_loss_notmean = mse_loss_fun(cls_score, rois_vector)
+        mse_loss = torch.mean(mse_loss_notmean, dim=1)
+        smse_loss = scale_invariant_loss(cls_score, rois_vector)
+        scale_loss = mse_loss - smse_loss
+        
+        indexes = np.where(rois_label != 0)
+        # nonzero_cls_loss_wv is only for output, we dont use it for backpropagation
+        nonzero_cls_loss_wv = torch.tensor(np.mean(scale_loss[indexes].detach().cpu().numpy()), dtype=torch.float64, requires_grad=False).cuda()
+        RCNN_loss_cls_wv = torch.mean(scale_loss)
+        
+        return nonzero_cls_loss_wv, RCNN_loss_cls_wv
 
     def _init_weights(self):
         def normal_init(m, mean, stddev, truncated=False):

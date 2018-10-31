@@ -218,11 +218,16 @@ def resnet152(pretrained=False):
   return model
 
 class resnet(_fasterRCNN):
-  def __init__(self, classes, num_layers=101, pretrained=False, class_agnostic=False):
+  def __init__(self, classes, num_layers=101, pretrained=False, class_agnostic=False,
+               wvsize=50, ce_loss=True, mse_loss=False, cosine_loss=False):
     self.model_path = 'data/pretrained_model/resnet101_caffe.pth'
     self.dout_base_model = 1024
     self.pretrained = pretrained
     self.class_agnostic = class_agnostic
+    self.wvsize = wvsize
+    self.ce_loss = ce_loss
+    self.mse_loss = mse_loss
+    self.cosine_loss = cosine_loss
 
     _fasterRCNN.__init__(self, classes, class_agnostic)
 
@@ -240,8 +245,14 @@ class resnet(_fasterRCNN):
 
     self.RCNN_top = nn.Sequential(resnet.layer4)
 
-    #TODO: number of classes is changed here to 50 which is the word vector size. To revert change to nn.Linear(2014, self.n_classes)
-    self.RCNN_cls_score = nn.Linear(2048, 50)
+    # one of the two should be created otherwise we don't have a class output layer!
+    # add the original class output layer
+    if self.ce_loss:
+        self.RCNN_cls_score = nn.Linear(2048, self.n_classes)
+    
+    # add the word vector output layer
+    if self.mse_loss or self.cosine_loss:
+        self.RCNN_cls_score_wv = nn.Linear(2048, self.wvsize)
 
     if self.class_agnostic:
       self.RCNN_bbox_pred = nn.Linear(2048, 4)

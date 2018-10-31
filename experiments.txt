@@ -1,0 +1,11 @@
+faster rcnn session info
+
+session - info
+1		- vanilla object detection with softmax cross entropy loss epoch1: Mean AP = 0.6666 epoch10: Mean AP = 0.7739
+2		- l-cosine similarity loss 1 epoch 1: Mean AP = 0.3347
+3		- 1-cosine similarity loss 2 (same as experiment 2, just reinitialized) epoch 1: Mean AP = 0.3210 epoch 10: Mean AP = 0.5710
+4		- tanh activation * 6 with scale invariant mse loss
+5		- tanh activation with scale invariant mse loss Mean AP = 0.1954
+6		-trela
+7		- no tanh epoch 1: Mean AP = 0.1828
+8		- like # 7. no tanh softmax epoch 10: Mean AP = 0.5272, no softmax epoch 10: Mean AP = 0.5862
