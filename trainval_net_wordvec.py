@@ -39,13 +39,6 @@ def parse_args():
   """
   parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
   
-  parser.add_argument('--wv', type=int, default=50, help='choice of word vector size, only support 50 for now',
-                      choices=[50])
-  parser.add_argument('--ce_loss', default=True, action='store_false', help='whether to have the original cross entropy loss as an output layer')
-  parser.add_argument('--mse_loss', default=False, action='store_true', help='adds an output layer for the mse word vector loss')
-  parser.add_argument('--cosine_loss', default=False, action='store_true', help='adds an output layer for the cosine word vector loss')
-  parser.add_argument('--norm_cosine_loss', default=False, action='store_true', help='output layer for the normalized cosine word vector loss')
-  
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='pascal_voc', type=str)
@@ -123,6 +116,15 @@ def parse_args():
   parser.add_argument('--use_tfb', dest='use_tfboard',
                       help='whether use tensorboard',
                       action='store_true')
+
+#loss args
+  parser.add_argument('--wv', type=int, default=50, help='choice of word vector size, only support 50 for now',
+                      choices=[50])
+  parser.add_argument('--ce_loss', default=True, action='store_false', help='whether to have the original cross entropy loss as an output layer')
+  parser.add_argument('--mse_loss', default=False, action='store_true', help='adds an output layer for the mse word vector loss')
+  parser.add_argument('--cosine_loss', default=False, action='store_true', help='adds an output layer for the cosine word vector loss')
+  parser.add_argument('--norm_cosine_loss', default=False, action='store_true', help='output layer for the normalized cosine word vector loss')
+  
 
   args = parser.parse_args()
   return args
