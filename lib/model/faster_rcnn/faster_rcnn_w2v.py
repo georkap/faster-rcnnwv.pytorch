@@ -142,7 +142,7 @@ class _fasterRCNN(nn.Module):
         RCNN_loss_cls = 0
         RCNN_loss_bbox = 0
         RCNN_loss_cls_wv = 0
-        nonzero_cls_loss_wv = torch.tensor(0).cuda()
+        nonzero_cls_loss_wv = torch.tensor(0.).cuda()
         losses = {}
 
         if self.training:
@@ -193,11 +193,11 @@ class _fasterRCNN(nn.Module):
         cls_score = F.normalize(cls_score, p=2, dim=1)
         rois_vector = F.normalize(rois_vector, p=2, dim=1)
         RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector)
-        return torch.tensor(0).cuda(), RCNN_loss_cls_wv
+        return torch.tensor(0.).cuda(), RCNN_loss_cls_wv
         
     def cosine_loss_fun(self, cls_score, rois_vector):
         RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector)
-        return torch.tensor(0).cuda(), RCNN_loss_cls_wv # the first argument is for the nonzero_cls_loss_wv that we currently dont have in cosine loss, so that the code wont break
+        return torch.tensor(0.).cuda(), RCNN_loss_cls_wv # the first argument is for the nonzero_cls_loss_wv that we currently dont have in cosine loss, so that the code wont break
 
     #TODO: make the mse loss "50" invariant, hint check scale invariant loss
     def mse_loss_fun(self, cls_score, rois_label, rois_vector):     

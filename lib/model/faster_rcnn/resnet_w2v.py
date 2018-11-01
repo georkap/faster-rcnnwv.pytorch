@@ -229,7 +229,7 @@ class resnet(_fasterRCNN):
     self.mse_loss = mse_loss
     self.cosine_loss = cosine_loss
     self.norm_cosine_loss = norm_cosine_loss
-    print(self.ce_loss, self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
+#    print(self.ce_loss, self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
     _fasterRCNN.__init__(self, classes, class_agnostic, wvsize, 
                          ce_loss, mse_loss, cosine_loss, norm_cosine_loss)
 
