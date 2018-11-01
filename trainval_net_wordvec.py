@@ -366,11 +366,11 @@ if __name__ == '__main__':
           fg_cnt = torch.sum(rois_label.data.ne(0))
           bg_cnt = rois_label.data.numel() - fg_cnt
         else:
-          loss_rpn_cls = losses['rpn_loss_cls'].item() #rpn_loss_cls.item()
-          loss_rpn_box = losses['rpn_loss_bbox'].item() #rpn_loss_box.item()
-          loss_rcnn_cls = losses['RCNN_loss_cls'].item() if args.ce_loss else 0 #RCNN_loss_cls.item()
-          loss_rcnn_cls_wv = losses['RCNN_loss_cls_wv'].item() if args.mse_loss or args.cosine_loss or args.norm_cosine_loss else 0
-          loss_rcnn_box = losses['RCNN_loss_bbox'].item() #RCNN_loss_bbox.item()
+          loss_rpn_cls = losses['rpn_loss_cls'].mean().item() #rpn_loss_cls.item()
+          loss_rpn_box = losses['rpn_loss_bbox'].mean().item() #rpn_loss_box.item()
+          loss_rcnn_cls = losses['RCNN_loss_cls'].mean().item() if args.ce_loss else 0 #RCNN_loss_cls.item()
+          loss_rcnn_cls_wv = losses['RCNN_loss_cls_wv'].mean().item() if args.mse_loss or args.cosine_loss or args.norm_cosine_loss else 0
+          loss_rcnn_box = losses['RCNN_loss_bbox'].mean().item() #RCNN_loss_bbox.item()
           loss_nonzero = cls_prob.mean().item()
           fg_cnt = torch.sum(rois_label.data.ne(0))
           bg_cnt = rois_label.data.numel() - fg_cnt

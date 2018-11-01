@@ -128,11 +128,11 @@ class _fasterRCNN(nn.Module):
         if self.ce_loss:
         # compute object classification probability with ce_loss
             cls_score = self.RCNN_cls_score(pooled_feat)
-            print("computed cls_score")
-        print(self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
+#            print("computed cls_score")
+#        print(self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
         if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
             cls_score_wv = self.RCNN_cls_score_wv(pooled_feat)
-            print("computed cls_score_wv")
+#            print("computed cls_score_wv")
         
 #        tanh_layer = nn.Tanh()
 #        cls_score = tanh_layer(cls_score)
@@ -152,7 +152,7 @@ class _fasterRCNN(nn.Module):
             losses['rpn_loss_bbox'] = rpn_loss_bbox.unsqueeze(0)
             losses['RCNN_loss_bbox'] = RCNN_loss_bbox.unsqueeze(0)
             
-            print("Is training:",self.ce_loss, self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
+#            print("Is training:",self.ce_loss, self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
             if self.ce_loss:
                 RCNN_loss_cls = self.original_cls_loss_fun(cls_score, rois_label)
                 losses['RCNN_loss_cls'] = RCNN_loss_cls.unsqueeze(0)
