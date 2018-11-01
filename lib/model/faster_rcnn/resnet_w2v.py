@@ -224,7 +224,7 @@ class resnet(_fasterRCNN):
     self.dout_base_model = 1024
     self.pretrained = pretrained
     self.class_agnostic = class_agnostic
-    self.wvsize = wvsize
+    self.wv_size = wvsize
     self.ce_loss = ce_loss
     self.mse_loss = mse_loss
     self.cosine_loss = cosine_loss
