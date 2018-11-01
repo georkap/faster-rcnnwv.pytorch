@@ -43,7 +43,8 @@ def scale_invariant_loss(t1,t2):
 
 class _fasterRCNN(nn.Module):
     """ faster RCNN """
-    def __init__(self, classes, class_agnostic):
+    def __init__(self, classes, class_agnostic, wvsize=50, 
+                 ce_loss=True, mse_loss=False, cosine_loss=False, norm_cosine_loss=False):
         super(_fasterRCNN, self).__init__()
         self.classes = classes
         self.n_classes = len(classes)
@@ -60,6 +61,12 @@ class _fasterRCNN(nn.Module):
 
         self.grid_size = cfg.POOLING_SIZE * 2 if cfg.CROP_RESIZE_WITH_MAX_POOL else cfg.POOLING_SIZE
         self.RCNN_roi_crop = _RoICrop()
+        
+        self.wv_size = wvsize
+        self.ce_loss = ce_loss
+        self.mse_loss = mse_loss
+        self.cosine_loss = cosine_loss
+        self.norm_cosine_loss = norm_cosine_loss
 
     def forward(self, im_data, im_info, gt_boxes, num_boxes):
         batch_size = im_data.size(0)
@@ -131,7 +138,8 @@ class _fasterRCNN(nn.Module):
 
         RCNN_loss_cls = 0
         RCNN_loss_bbox = 0
-
+        RCNN_loss_cls_wv = 0
+        nonzero_cls_loss_wv = torch.tensor(0).cuda()
         losses = {}
 
         if self.training:
