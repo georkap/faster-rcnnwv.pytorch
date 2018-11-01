@@ -219,7 +219,7 @@ def resnet152(pretrained=False):
 
 class resnet(_fasterRCNN):
   def __init__(self, classes, num_layers=101, pretrained=False, class_agnostic=False,
-               wvsize=50, ce_loss=True, mse_loss=False, cosine_loss=False):
+               wvsize=50, ce_loss=True, mse_loss=False, cosine_loss=False, norm_cosine_loss=False):
     self.model_path = 'data/pretrained_model/resnet101_caffe.pth'
     self.dout_base_model = 1024
     self.pretrained = pretrained
@@ -228,6 +228,7 @@ class resnet(_fasterRCNN):
     self.ce_loss = ce_loss
     self.mse_loss = mse_loss
     self.cosine_loss = cosine_loss
+    self.norm_cosine_loss = norm_cosine_loss
 
     _fasterRCNN.__init__(self, classes, class_agnostic)
 
@@ -251,7 +252,7 @@ class resnet(_fasterRCNN):
         self.RCNN_cls_score = nn.Linear(2048, self.n_classes)
     
     # add the word vector output layer
-    if self.mse_loss or self.cosine_loss:
+    if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
         self.RCNN_cls_score_wv = nn.Linear(2048, self.wvsize)
 
     if self.class_agnostic:

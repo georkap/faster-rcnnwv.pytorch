@@ -118,8 +118,12 @@ class _fasterRCNN(nn.Module):
             bbox_pred_select = torch.gather(bbox_pred_view, 1, rois_label.view(rois_label.size(0), 1, 1).expand(rois_label.size(0), 1, 4))
             bbox_pred = bbox_pred_select.squeeze(1)
 
-        # compute object classification probability
-        cls_score = self.RCNN_cls_score(pooled_feat)
+        if self.ce_loss:
+        # compute object classification probability with ce_loss
+            cls_score = self.RCNN_cls_score(pooled_feat)
+        if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
+            cls_score_wv = self.RCNN_cls_score_wv(pooled_feat)
+        
 #        tanh_layer = nn.Tanh()
 #        cls_score = tanh_layer(cls_score)
         
@@ -149,10 +153,13 @@ class _fasterRCNN(nn.Module):
                 rois_vector = rois_vector.cuda()
             
                 if self.mse_loss:
-                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.mse_loss_fun(cls_score, rois_label, rois_vector)
+                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.mse_loss_fun(cls_score_wv, rois_label, rois_vector)
                     losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
                 elif self.cosine_loss:
-                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.cosine_loss_fun(cls_score, rois_vector)        
+                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.cosine_loss_fun(cls_score_wv, rois_vector)        
+                    losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
+                elif self.norm_cosine_loss:
+                    nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.norm_cosine_loss_fun(cls_score_wv, rois_vector)        
                     losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
 
         cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
@@ -168,11 +175,15 @@ class _fasterRCNN(nn.Module):
         RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)     
         return RCNN_loss_cls
 
-    #TODO: change to normalized cosine loss
+    def norm_cosine_loss_fun(self, cls_score, rois_vector):
+        RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector/self.wv_size)
+        return torch.tensor(0).cuda(), RCNN_loss_cls_wv
+        
     def cosine_loss_fun(self, cls_score, rois_vector):
         RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector)
         return torch.tensor(0).cuda(), RCNN_loss_cls_wv # the first argument is for the nonzero_cls_loss_wv that we currently dont have in cosine loss, so that the code wont break
 
+    #TODO: make the mse loss "50" invariant, hint check scale invariant loss
     def mse_loss_fun(self, cls_score, rois_label, rois_vector):     
         mse_loss_fun = nn.MSELoss(reduce=False)
         
