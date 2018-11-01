@@ -153,7 +153,7 @@ class _fasterRCNN(nn.Module):
                 RCNN_loss_cls = self.original_cls_loss_fun(cls_score, rois_label)
                 losses['RCNN_loss_cls'] = RCNN_loss_cls.unsqueeze(0)
             
-            if self.mse_loss or self.cosine_loss:
+            if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
                 # create a vector for the size of the word vector
                 rois_vector = torch.zeros(rois_label.shape[0], self.wv_size) 
                 for ind, val in enumerate(rois_label):
