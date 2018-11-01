@@ -128,8 +128,11 @@ class _fasterRCNN(nn.Module):
         if self.ce_loss:
         # compute object classification probability with ce_loss
             cls_score = self.RCNN_cls_score(pooled_feat)
+            print("computed cls_score")
+        print(self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
         if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
             cls_score_wv = self.RCNN_cls_score_wv(pooled_feat)
+            print("computed cls_score_wv")
         
 #        tanh_layer = nn.Tanh()
 #        cls_score = tanh_layer(cls_score)
@@ -149,6 +152,7 @@ class _fasterRCNN(nn.Module):
             losses['rpn_loss_bbox'] = rpn_loss_bbox.unsqueeze(0)
             losses['RCNN_loss_bbox'] = RCNN_loss_bbox.unsqueeze(0)
             
+            print("Is training:",self.ce_loss, self.mse_loss, self.cosine_loss, self.norm_cosine_loss)
             if self.ce_loss:
                 RCNN_loss_cls = self.original_cls_loss_fun(cls_score, rois_label)
                 losses['RCNN_loss_cls'] = RCNN_loss_cls.unsqueeze(0)
@@ -169,6 +173,8 @@ class _fasterRCNN(nn.Module):
                 elif self.norm_cosine_loss:
                     nonzero_cls_loss_wv, RCNN_loss_cls_wv = self.norm_cosine_loss_fun(cls_score_wv, rois_vector)        
                     losses['RCNN_loss_cls_wv'] = RCNN_loss_cls_wv.unsqueeze(0)
+                else:
+                    print("no word vector loss added")
 
         cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
         bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
