@@ -253,7 +253,7 @@ class resnet(_fasterRCNN):
     
     # add the word vector output layer
     if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
-        self.RCNN_cls_score_wv = nn.Linear(2048, self.wvsize)
+        self.RCNN_cls_score_wv = nn.Linear(2048, self.wv_size)
 
     if self.class_agnostic:
       self.RCNN_bbox_pred = nn.Linear(2048, 4)
