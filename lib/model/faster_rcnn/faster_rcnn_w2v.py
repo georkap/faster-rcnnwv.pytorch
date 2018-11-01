@@ -147,7 +147,7 @@ class _fasterRCNN(nn.Module):
             
             if self.mse_loss or self.cosine_loss:
                 # create a vector for the size of the word vector
-                rois_vector = torch.zeros(rois_label.shape[0], self.wvsize) 
+                rois_vector = torch.zeros(rois_label.shape[0], self.wv_size) 
                 for ind, val in enumerate(rois_label):
                     rois_vector[ind] = torch.tensor(name_vectors[val.item()])               
                 rois_vector = rois_vector.cuda()
@@ -176,7 +176,9 @@ class _fasterRCNN(nn.Module):
         return RCNN_loss_cls
 
     def norm_cosine_loss_fun(self, cls_score, rois_vector):
-        RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector/self.wv_size)
+        cls_score = F.normalize(cls_score, p=2, dim=1)
+        rois_vector = F.normalize(rois_vector, p=2, dim=1)
+        RCNN_loss_cls_wv = 1 - F.cosine_similarity(cls_score, rois_vector)
         return torch.tensor(0).cuda(), RCNN_loss_cls_wv
         
     def cosine_loss_fun(self, cls_score, rois_vector):
