@@ -230,7 +230,12 @@ class _fasterRCNN(nn.Module):
         normal_init(self.RCNN_rpn.RPN_Conv, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_rpn.RPN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_rpn.RPN_bbox_pred, 0, 0.01, cfg.TRAIN.TRUNCATED)
-#        normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
+        if self.ce_loss:
+            normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            print("DEBUG: self.RCNN_cls_score weights initialized")
+        if self.mse_loss or self.cosine_loss or self.norm_cosine_loss:
+            normal_init(self.RCNN_cls_score_wv, 0, 0.01, cfg.TRAIN.TRUNCATED)
+            print("DEBUG: self.RCNN_cls_score_wv weights initialized")
         normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
     def create_architecture(self):
