@@ -71,6 +71,8 @@ def parse_args():
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='pascal_voc', type=str)
+  parser.add_argument('--eval_word_vec', default=False, action='store_true')
+  parser.add_argument('--eval_train_set', default=False, action='store_true')
   parser.add_argument('--cfg', dest='cfg_file',
                       help='optional config file',
                       default='cfgs/vgg16.yml', type=str)
@@ -111,6 +113,15 @@ def parse_args():
                       help='visualization mode',
                       action='store_true')
   parser.add_argument('--gpus', nargs='+', type=int, default=None)
+  
+  #loss args
+  parser.add_argument('--wv', type=int, default=50, help='choice of word vector size, only support 50 for now',
+                      choices=[50])
+  parser.add_argument('--ce_loss', default=True, action='store_false', help='whether to have the original cross entropy loss as an output layer')
+  parser.add_argument('--mse_loss', default=False, action='store_true', help='adds an output layer for the mse word vector loss')
+  parser.add_argument('--cosine_loss', default=False, action='store_true', help='adds an output layer for the cosine word vector loss')
+  parser.add_argument('--norm_cosine_loss', default=False, action='store_true', help='output layer for the normalized cosine word vector loss')
+
   args = parser.parse_args()
   return args
 
@@ -136,7 +147,8 @@ if __name__ == '__main__':
   elif args.dataset == "pascal_voc_0712":
       args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
       args.imdbval_name = "voc_2007_test"
-      #args.imdbval_name = "voc_2007_trainval+voc_2012_trainval" # to run eval on train set
+      if args.eval_train_set:
+          args.imdbval_name = "voc_2007_trainval+voc_2012_trainval" # to run eval on train set
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
   elif args.dataset == "coco":
       args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
@@ -177,7 +189,10 @@ if __name__ == '__main__':
   if args.net == 'vgg16':
     fasterRCNN = vgg16(imdb.classes, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res101':
-    fasterRCNN = resnet(imdb.classes, 101, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = resnet(imdb.classes, 101, pretrained=False, class_agnostic=args.class_agnostic,
+                        wvsize=args.wv, ce_loss=args.ce_loss, 
+                        mse_loss=args.mse_loss, cosine_loss=args.cosine_loss,
+                        norm_cosine_loss=args.norm_cosine_loss)
   elif args.net == 'res50':
     fasterRCNN = resnet(imdb.classes, 50, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res152':
@@ -236,7 +251,8 @@ if __name__ == '__main__':
 
   save_name = 'faster_rcnn_{}_{}_{}'.format(args.checksession, args.checkepoch,args.gpus[0])
   num_images = len(imdb.image_index)
-  #num_images = len(roidb) # to run eval on train set
+  if args.eval_train_set:
+      num_images = len(roidb) # to run eval on train set
   all_boxes = [[[] for _ in xrange(num_images)]
                for _ in xrange(imdb.num_classes)]
 
@@ -263,12 +279,16 @@ if __name__ == '__main__':
       num_boxes.data.resize_(data[3].size()).copy_(data[3])
 
       det_tic = time.time()
-      rois, cls_prob, bbox_pred, \
-      rpn_loss_cls, rpn_loss_box, \
-      RCNN_loss_cls, RCNN_loss_bbox, \
-      rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
-
-      scores = cls_prob.data
+#      rois, cls_prob, bbox_pred, \
+#      rpn_loss_cls, rpn_loss_box, \
+#      RCNN_loss_cls, RCNN_loss_bbox, \
+#      rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+      rois, cls_prob, cls_prob_wv, bbox_pred, losses, rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+      if args.eval_word_vec:
+          scores = cls_prob_wv.data
+      else:
+          scores = cls_prob.data
+      
       boxes = rois.data[:, :, 1:5]
 
       if cfg.TEST.BBOX_REG:
@@ -295,17 +315,19 @@ if __name__ == '__main__':
 
       scores = scores.squeeze()
       
-      softmax = nn.Softmax(dim=1)
-      res_vector = []
-      for ii in range(scores.shape[0]): # for all 300 the bounding boxes of an image
-          res_vector.append([])
-          #res_vector[ii].append(-1)
-          for k in range(0, 21): # we calculate the dot product with each possible class
-              res_vector[ii].append(cosine_similarity(scores.cpu().numpy()[ii], np.array(name_vectors[k])))
-              
-    
-      #scores = softmax(torch.tensor(res_vector).cuda())
-      scores = torch.tensor(res_vector).cuda()
+#      softmax = nn.Softmax(dim=1)
+      if args.eval_word_vec:
+          res_vector = []
+          for ii in range(scores.shape[0]): # for all 300 the bounding boxes of an image
+              res_vector.append([])
+              #res_vector[ii].append(-1)
+              for k in range(0, 21): # we calculate the dot product with each possible class
+                  res_vector[ii].append(cosine_similarity(scores.cpu().numpy()[ii], np.array(name_vectors[k])))
+#          scores = softmax(torch.tensor(res_vector).cuda())
+          scores = torch.tensor(res_vector).cuda()
+      else:
+          scores = scores.squeeze()
+
       
       pred_boxes = pred_boxes.squeeze()
       det_toc = time.time()

@@ -183,7 +183,7 @@ class _fasterRCNN(nn.Module):
             return rois, nonzero_cls_loss_wv.unsqueeze(0), bbox_pred, losses, rois_label
 #            return rois, nonzero_cls_loss_wv.unsqueeze(0), bbox_pred, rpn_loss_cls.unsqueeze(0), rpn_loss_bbox.unsqueeze(0), RCNN_loss_cls.unsqueeze(0), RCNN_loss_bbox.unsqueeze(0), rois_label
         else:
-            return  rois, cls_score, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox, rois_label
+            return  rois, cls_score, cls_score_wv, bbox_pred, losses, rois_label
 
     def original_cls_loss_fun(self, cls_score, rois_label):
         RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)     

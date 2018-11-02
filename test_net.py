@@ -47,6 +47,7 @@ def parse_args():
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='pascal_voc', type=str)
+  parser.add_argument('--eval_train_set', default=False, action='store_true')
   parser.add_argument('--cfg', dest='cfg_file',
                       help='optional config file',
                       default='cfgs/vgg16.yml', type=str)
@@ -111,8 +112,9 @@ if __name__ == '__main__':
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
   elif args.dataset == "pascal_voc_0712":
       args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
-      #args.imdbval_name = "voc_2007_test"
-      args.imdbval_name = "voc_2007_trainval+voc_2012_trainval" # for evaluating at test set
+      args.imdbval_name = "voc_2007_test"
+      if args.eval_train_set:
+          args.imdbval_name = "voc_2007_trainval+voc_2012_trainval" # for evaluating at train set
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
   elif args.dataset == "coco":
       args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
@@ -208,8 +210,9 @@ if __name__ == '__main__':
     thresh = 0.0
 
   save_name = 'faster_rcnn_{}_{}_{}'.format(args.checksession, args.checkepoch,args.gpus[0])
-  #num_images = len(imdb.image_index)
-  num_images = len(roidb) # to run eval on train set
+  num_images = len(imdb.image_index)
+  if args.eval_train_set:
+      num_images = len(roidb) # to run eval on train set
   all_boxes = [[[] for _ in xrange(num_images)]
                for _ in xrange(imdb.num_classes)]
 
